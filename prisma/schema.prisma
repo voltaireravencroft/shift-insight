@@ -1,0 +1,61 @@
+// prisma/schema.prisma
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model Shift {
+  id        String        @id @default(cuid())
+  name      String
+  date      DateTime
+  startedAt DateTime
+  endedAt   DateTime?
+  workers   ShiftWorker[]
+  events    Event[]
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+}
+
+model Worker {
+  id        String        @id @default(cuid())
+  name      String        @unique
+  role      String        @default("associate")
+  active    Boolean       @default(true)
+  shifts    ShiftWorker[]
+  createdAt DateTime      @default(now())
+}
+
+model Station {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  createdAt DateTime @default(now())
+  events    Event[]
+}
+
+model ShiftWorker {
+  id       String @id @default(cuid())
+  shiftId  String
+  workerId String
+  shift    Shift  @relation(fields: [shiftId], references: [id], onDelete: Cascade)
+  worker   Worker @relation(fields: [workerId], references: [id], onDelete: Cascade)
+}
+
+enum EventType {
+  THROUGHPUT // units processed
+  DELAY // blockage / downtime minutes
+}
+
+model Event {
+  id         String    @id @default(cuid())
+  shiftId    String
+  stationId  String
+  kind       EventType
+  value      Int // units or minutes
+  happenedAt DateTime  @default(now())
+  shift      Shift     @relation(fields: [shiftId], references: [id], onDelete: Cascade)
+  station    Station   @relation(fields: [stationId], references: [id], onDelete: Restrict)
+}

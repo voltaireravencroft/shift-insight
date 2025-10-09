@@ -1,40 +1,35 @@
-import { prisma } from "@/lib/db"
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
-import { Factory, Boxes, Activity } from "lucide-react"
+import { QuickLog } from '@/components/QuickLog';
+import { ThroughputByHour } from '@/components/charts/ThroughputByHour';
+import { DelayByStation } from '@/components/charts/DelayByStation';
+import { prisma } from '@/lib/db';
+import { getThroughputByHourToday, getDelayByStationToday } from '@/lib/analytics'
 
 export default async function Page() {
-  const [shiftCount, stationCount, eventCount] = await Promise.all([
-    prisma.shift.count(),
-    prisma.station.count(),
-    prisma.event.count(),
-  ])
-
-  const Stat = ({
-    title, value, Icon,
-  }: {
-    title: string
-    value: number | string
-    Icon: React.ComponentType<React.SVGProps<SVGSVGElement>>
-  }) => (
-    <Card className="rounded-2xl border shadow-sm">
-      <CardHeader className="flex flex-row items-center justify-between pb-2">
-        <CardTitle className="text-sm text-muted-foreground">{title}</CardTitle>
-        <Icon className="h-6 w-6 text-muted-foreground" />
-      </CardHeader>
-      <CardContent>
-        <div className="text-4xl font-extrabold">{value}</div>
-      </CardContent>
-    </Card>
-  )
+  const [stations, tByHour, dByStation] = await Promise.all([
+    prisma.station.findMany({ select: { id: true, name: true } }),
+    getThroughputByHourToday(),
+    getDelayByStationToday(),
+  ]);
 
   return (
-    <main className="p-8">
-      <h1 className="text-3xl font-bold mb-6">Shift Insight</h1>
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <Stat title="Shifts" value={shiftCount} Icon={Factory} />
-        <Stat title="Stations" value={stationCount} Icon={Boxes} />
-        <Stat title="Events" value={eventCount} Icon={Activity} />
-      </div>
-    </main>
-  )
+    <div className="space-y-6">
+      {/* existing KPI cards… make them links to /shifts, /stations, /events */}
+
+      <section className="rounded-2xl border p-4">
+        <h3 className="mb-3 text-sm font-medium">Quick Log</h3>
+        <QuickLog stations={stations} />
+      </section>
+
+      <section className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="rounded-2xl border p-4">
+          <h3 className="mb-3 text-sm font-medium">Throughput by Hour (today)</h3>
+          <ThroughputByHour data={tByHour} />
+        </div>
+        <div className="rounded-2xl border p-4">
+          <h3 className="mb-3 text-sm font-medium">Delay Minutes by Station (today)</h3>
+          <DelayByStation data={dByStation} />
+        </div>
+      </section>
+    </div>
+  );
 }
